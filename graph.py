@@ -24,7 +24,7 @@ class Graph():
         #
         for li in self.lineOff:
             self.lineC.pop(li)
-        node =self.lineC[lineOn][0]
+        node = self.lineC[lineOn][0]
         loop = self.getloop(node)
         self.line_in_loop = []
         for i in range(len(loop[1])):
@@ -174,28 +174,53 @@ class Graph():
             first_pop.append(new_config)
         return np.array(first_pop)
     
-    def detect_cocycle(self,linesOff,newlineoff,mutual):
-        self.lineOff = linesOff
-        self.lineC = copy.deepcopy(self.param.AllLine2Bus)
-        #
-        self.busC = copy.deepcopy(self.param.BUSC)
-
-        for li in self.lineOff:
-            for bi in self.lineC[li]:
-                self.busC[bi].remove(li)
-        #
-        self.bus2bus = copy.deepcopy(self.param.bus2bus)
-        for li in self.lineOff:
-            bi = self.lineC[li]
-            self.bus2bus[bi[0]].remove(bi[1])
-            self.bus2bus[bi[1]].remove(bi[0])
-        for li in self.lineOff:
-            self.lineC.pop(li)
-        suitable_lines = mutual
-        for bi in self.lineC[newlineoff]:
-            self.busC[bi].discard(newlineoff)
-            if not self.busC[bi]:
-                suitable_lines = self.param.BUSC[bi].intersection(mutual)            
+    def detect_cocycle(self,lineOff,newlineOff,mutual):
+        lineC = copy.deepcopy(self.param.AllLine2Bus)
+        busC = self.param.BUSC
+        busC_copy = copy.deepcopy(busC)
+        for li in lineOff:
+            for bi in lineC[li]:
+                busC_copy[bi].remove(li)
+        for bi in lineC[newlineOff]:
+            busC_copy[bi].discard(newlineOff)
+        for k in busC_copy.keys():
+            if len(busC_copy[k]) == 0:
+                island_bus = k
                 break
-        linefound = suitable_lines.pop()
+        p1_lineoff = lineC[newlineOff][0]
+        p2_lineoff = lineC[newlineOff][1]
+        if "island_bus" in locals():
+            setfound = busC[island_bus].intersection(mutual)
+            print(setfound)
+            linefound = setfound.pop()
+        else:
+            # doesnt find any cocycle
+            if newlineOff in lineOff:
+                linefound = newlineOff
+            else:
+                for li in mutual:
+                    for bi in lineC[li]:
+                        if bi == p1_lineoff or bi == p2_lineoff:
+                            linefound = li
+                            break
+        if "linefound" not in locals():
+            linefound = mutual.pop()
+
         return linefound
+    
+    def is_connected(self,graph,start,end):
+        self.graph = graph
+        self.start = start
+        self.end = end
+        self.visited = set()
+        return self.newdfs(self.start)
+    
+    def newdfs(self,node):
+        self.visited.add(node)
+        for neighbor in self.graph.get(node, []):
+            if neighbor == self.end:
+                return True
+            if neighbor not in self.visited:
+                if self.newdfs(neighbor):
+                    return True
+        return False
