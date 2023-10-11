@@ -4,7 +4,9 @@ import pygad
 from config import Configuration
 from parameter import Parameter
 from powerflow import PowerFlow
-from graph import Graph   
+from graph import Graph
+from new_kernel import Configuration as CF
+
     
 
 
@@ -27,29 +29,33 @@ class GA():
 
     def crossover_func(self, parents, offspring_size, reconfiguration):
         global param
+        global no_ex_gene
+        list_parents = parents.tolist()
         offspring = []
-        
         idx = 0
-        while len(offspring) != offspring_size[0]:
-            
-            parent1 = list(parents[idx % parents.shape[0], :])
-            parent2 = parents[(idx + 1) % parents.shape[0], :]
+        while idx != offspring_size[0]:
+            parent1 = list_parents[idx % parents.shape[0]]
+            parent2 = list_parents[(idx + 1) % parents.shape[0]]
             set_par2 = set(parent2)
-            random_chosen_point = np.random.choice(range(offspring_size[1]))
-            #this is exchange line
-            exchg_branch = parent1[random_chosen_point]
-            parent1.remove(exchg_branch)
-            # use dfs to find loop 
-            loop_found = self.g.get_list_lines_in_loop(exchg_branch,parent1)
-            
-            set_loop_found = set(loop_found)
-            mutual = set_loop_found.intersection(set_par2)
-            exchg_branch2 = mutual.pop()
-            parent1.append(exchg_branch2) 
-
-            offspring.append(parent1)
-
+            random_chosen_points = np.random.randint(0, offspring_size[1]-1, no_ex_gene)
+            for random_chosen_point in random_chosen_points:
+                #this is exchange line
+                exchg_branch = parent1[random_chosen_point]
+                parent1.remove(exchg_branch)
+                # use dfs to find loop 
+                loop_found = self.g.get_list_lines_in_loop(exchg_branch,parent1)
+                set_loop_found = set(loop_found)
+                mutual = set_loop_found.intersection(set_par2)
+                if len(mutual) == 1:
+                    exchg_branch2 = mutual.pop()
+                else:
+                    exchg_branch2 = self.g.detect_cocycle(set_par2,exchg_branch,mutual)
+                #crossover
+                parent1.append(exchg_branch2)
+                position = parent2.index(exchg_branch2)
+                parent2[position] = exchg_branch
             idx += 1
+            offspring.append(parent1)
 
         return np.array(offspring)
 
@@ -77,16 +83,18 @@ if __name__ == '__main__':
     
     graph = Graph(param, param.nBus)
 
-    initial_population = graph.init_pop(20)
-    print(initial_population)
+    initial_population = graph.init_pop(40)
+
+    no_ex_gene = 2
+
     reconfiguration = pygad.GA(num_generations=200, num_parents_mating=10,
                         fitness_func=ga.fitness_func,
                         initial_population=initial_population,gene_type=int,
                         crossover_type=ga.crossover_func,
                         mutation_type=ga.mutation_func,mutation_num_genes=2,
                         crossover_probability=0.9,
-                        mutation_probability=0.005)
-                        #parallel_processing=4 ,mutation_num_genes=10)
+                        mutation_probability=0.005,allow_duplicate_genes=False)
+    
     reconfiguration.run()
 
     # Retrieve the best solution and its fitness value
@@ -97,6 +105,6 @@ if __name__ == '__main__':
     end = time.time()
     print(end-start)
     reconfiguration.summary()
-    
+
     
     

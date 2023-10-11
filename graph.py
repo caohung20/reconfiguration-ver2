@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+from collections import defaultdict
 class Graph():
 
     def __init__(self, param, vertices):
@@ -49,16 +50,12 @@ class Graph():
             if neighbor != parent:
                 self.dfs(neighbor, node, path.copy())
         path.pop()
+
     def getloop(self,node):
         self.loops = dict()
         self.setloops = dict()
-        
         self.dfs(node, None, [])
         return self.loops
-    
-    
-    
-
 
     # A utility function to find set of an element i
     # (truly uses path compression technique)
@@ -127,8 +124,6 @@ class Graph():
                 result.append({u, v})
                 self.union(parent, rank, x, y)
             # Else discard the edge
-
-        
         lineOn = set()
         for li in result:
             position = self.param.busesin1line.index(li)
@@ -191,36 +186,76 @@ class Graph():
         p2_lineoff = lineC[newlineOff][1]
         if "island_bus" in locals():
             setfound = busC[island_bus].intersection(mutual)
-            print(setfound)
             linefound = setfound.pop()
+            return linefound
         else:
             # doesnt find any cocycle
             if newlineOff in lineOff:
                 linefound = newlineOff
+                return linefound
             else:
-                for li in mutual:
-                    for bi in lineC[li]:
-                        if bi == p1_lineoff or bi == p2_lineoff:
-                            linefound = li
-                            break
+                pass
         if "linefound" not in locals():
-            linefound = mutual.pop()
-
+            bus2bus = copy.deepcopy(self.param.bus2bus)
+            lineOff.add(newlineOff)
+            store_li = mutual.pop()
+            lineOff.discard(store_li)
+            #lineOff = {36, 15, 33, 35, 34}
+            for li in lineOff:
+                v = lineC[li]
+                bus2bus[v[0]].discard(v[1])
+                bus2bus[v[1]].discard(v[0])
+            while True:
+            
+                count = 0
+                for pi in lineC[newlineOff]:
+                    check = self.isReachable(1, pi, bus2bus)
+                    if not check:
+                        break
+                    count += 1
+                    if count == 2:
+                        return store_li
+                # re-add lineoff not suitable
+                v = lineC[store_li]
+                bus2bus[v[0]].remove(v[1])
+                bus2bus[v[1]].remove(v[0])
+                lineOff.add(store_li)
+                #retry with other line
+                store_li = mutual.pop()
+                lineOff.discard(store_li)
+                v = lineC[store_li]
+                bus2bus[v[0]].add(v[1])
+                bus2bus[v[1]].add(v[0])
+                
         return linefound
     
-    def is_connected(self,graph,start,end):
+    # Use BFS to check path between s and d
+    def isReachable(self, s, d, graph):
         self.graph = graph
-        self.start = start
-        self.end = end
-        self.visited = set()
-        return self.newdfs(self.start)
-    
-    def newdfs(self,node):
-        self.visited.add(node)
-        for neighbor in self.graph.get(node, []):
-            if neighbor == self.end:
-                return True
-            if neighbor not in self.visited:
-                if self.newdfs(neighbor):
-                    return True
+        # Mark all the vertices as not visited
+        visited =[False]*(self.V)
+  
+        # Create a queue for BFS
+        queue=[]
+  
+        # Mark the source node as visited and enqueue it
+        queue.append(s)
+        visited[s-1] = True
+  
+        while queue:
+ 
+            #Dequeue a vertex from queue 
+            n = queue.pop(0)
+             
+            # If this adjacent node is the destination node,
+            # then return true
+            if n == d:
+                   return True
+ 
+            #  Else, continue to do BFS
+            for i in self.graph[n]:
+                if visited[i-1] == False:
+                    queue.append(i)
+                    visited[i-1] = True
+         # If BFS is complete without visited d
         return False
