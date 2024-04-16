@@ -83,16 +83,16 @@ if __name__ == '__main__':
     
     graph = Graph(param, param.nBus)
 
-    initial_population = graph.init_pop(40)
+    initial_population = graph.init_pop(20)
 
     no_ex_gene = 2
 
-    reconfiguration = pygad.GA(num_generations=200, num_parents_mating=10,
+    reconfiguration = pygad.GA(num_generations=500, num_parents_mating=10,
                         fitness_func=ga.fitness_func,
                         initial_population=initial_population,gene_type=int,
                         crossover_type=ga.crossover_func,
-                        mutation_type=ga.mutation_func,mutation_num_genes=2,
-                        crossover_probability=0.9,
+                        mutation_type=ga.mutation_func,mutation_num_genes=1,
+                        crossover_probability=0.8,
                         mutation_probability=0.005,allow_duplicate_genes=False)
     
     reconfiguration.run()
@@ -105,6 +105,9 @@ if __name__ == '__main__':
     end = time.time()
     print(end-start)
     reconfiguration.summary()
+    #
+    reconfiguration.plot_fitness()
+    #
 
     
     
